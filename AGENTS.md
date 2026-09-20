@@ -9,10 +9,11 @@ npm run dev        # Vite (5173) + backend tsx watch (3000) con concurrently; /a
 npm run build      # vite build -> dist/ (frontend + PWA/service worker)
 npm start          # backend Express sirve dist/ estáticos y la API (para Render)
 npm run typecheck  # tsc --noEmit (aprueba o no el PR; corre este primero)
+npm run test:e2e   # E2E con Playwright (Chromium) contra el server real; spawnea/cierra el server y limpia state.json solo
 ```
 
 - El backend corre TS directo con `tsx` (no hay build propio del server). `dist/` solo es el frontend.
-- Verificación estándar: `npm run typecheck` → `npm run build`.
+- Verificación estándar: `npm run typecheck` → `npm run build`. Para la suite E2E, instalar el browser una vez: `npx playwright install chromium` (`test/e2e.mjs`).
 
 ## Arquitectura
 
