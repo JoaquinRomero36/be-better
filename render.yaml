@@ -6,6 +6,9 @@ services:
     repo: https://github.com/JoaquinRomero36/be-better
     branch: main
     plan: free
-    buildCommand: npm run build
+    buildCommand: npm ci && npm run build
     startCommand: npm start
     autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: development
