@@ -74,19 +74,13 @@ try {
   ok('onboarding visible', await page.getByRole('heading', { name: /Armemos tu día perfecto/ }).isVisible());
 
   await page.fill('[data-rf="nombre"]', 'Meditar');
-  await page.fill('input[data-rf="hora"]', '8');
-  await page.fill('input[data-rf="minuto"]', '30');
 
   await page.click('[data-onb-add]');
   const rows = page.locator('[data-routine-index]');
   await rows.nth(1).locator('[data-rf="nombre"]').fill('Leer 20 min');
-  await rows.nth(1).locator('input[data-rf="hora"]').fill('22');
-  await rows.nth(1).locator('input[data-rf="minuto"]').fill('0');
 
   await page.click('[data-onb-add]');
   await rows.nth(2).locator('[data-rf="nombre"]').fill('Pasear al perro');
-  await rows.nth(2).locator('input[data-rf="hora"]').fill('18');
-  await rows.nth(2).locator('input[data-rf="minuto"]').fill('30');
 
   await rows.nth(1).locator('[data-routine-del]').click();
   ok('filas restantes', (await page.locator('[data-routine-index]').count()) === 2);
@@ -125,13 +119,44 @@ try {
   ok('server tiene tareas de hoy', remoteTasks.length === 2);
   ok('server recibió el estado ciclado', remoteTasks.some((t) => t.estado === 'CASI_COMPLETA'));
 
-  console.log('\n[5] CRUD local (agregar / editar / borrar)');
+  console.log('\n[5] CRUD local (agregar / editar / borrar) + contador');
   await page.click('[data-toggle-add]');
   await page.fill('[data-field="nombre"]', 'Ejercicio');
-  await page.fill('[data-field="hora"]', '7');
-  await page.fill('[data-field="minuto"]', '0');
+  await page.fill('[data-field="cantidad"]', '10');
   await page.click('form[data-form="task"] button[type="submit"]');
   ok('tarea agregada', (await page.locator('.task__name').allTextContents()).includes('Ejercicio'));
+
+  // Contador de unidades: estado derivado (50% A medias, >75% Casi, 100% Completa) y sync al server
+  const ejRow = () => page.locator('.task').filter({ hasText: 'Ejercicio' });
+  const ejTxt = () => ejRow().locator('.task__count-num').textContent();
+  const ejSt = () => ejRow().locator('.task__cycle').getAttribute('title');
+  const clickN = async (loc, n) => {
+    for (let i = 0; i < n; i++) {
+      await loc.click();
+      await page.waitForTimeout(150);
+    }
+  };
+
+  ok('contador arranca en 0 / 10', (await ejTxt()) === '0 / 10');
+  ok('0% -> No hice', (await ejSt()) === 'No hice');
+  await clickN(ejRow().locator('[data-action="count"]'), 2);
+  ok('2 / 10', (await ejTxt()) === '2 / 10');
+  ok('20% sigue No hice', (await ejSt()) === 'No hice');
+  await clickN(ejRow().locator('[data-action="count"]'), 3);
+  ok('50% -> A medias', (await ejSt()) === 'A medias');
+  await clickN(ejRow().locator('[data-action="count"]'), 1);
+  ok('60% sigue A medias', (await ejSt()) === 'A medias');
+  await clickN(ejRow().locator('[data-action="count"]'), 2);
+  ok('80% -> Casi completa', (await ejSt()) === 'Casi completa');
+  await clickN(ejRow().locator('[data-action="count"]'), 2);
+  ok('100% -> Completa', (await ejSt()) === 'Completa');
+  await clickN(ejRow().locator('[data-action="uncount"]'), 1);
+  ok('90% -> Casi completa', (await ejSt()) === 'Casi completa');
+  ok('9 / 10', (await ejTxt()) === '9 / 10');
+  await page.waitForTimeout(1500);
+  const stC = await fetchState();
+  const ejRemote = stC.days?.[todayKey()]?.find((t) => t.nombre.startsWith('Ejercicio'));
+  ok('estado derivado + hecho en el server', ejRemote?.estado === 'CASI_COMPLETA' && ejRemote?.hecho === 9);
 
   const ej = page.locator('.task').filter({ hasText: 'Ejercicio' });
   await ej.locator('[data-action="edit"]').click();
@@ -146,8 +171,12 @@ try {
 
   console.log('\n[6] Semana');
   await page.click('a[href="#semana"]');
-  await page.waitForSelector('.week-item');
-  ok('7 días en la semana', (await page.locator('.week-item').count()) === 7);
+  await page.waitForSelector('.wk-col');
+  const wkCols = await page.locator('.wk-col').count();
+  ok(`grilla de 7 días (${wkCols})`, wkCols === 7);
+  ok('hoy resaltado', (await page.locator('.wk-col--today').count()) === 1);
+  const wkItems = await page.locator('.wk-item').count();
+  ok(`tareas por día (${wkItems})`, wkItems >= 2);
   ok('regularidad por tarea', (await page.locator('.reg-list li').count()) >= 2);
 
   console.log('\n[7] Almanaque');
@@ -159,10 +188,13 @@ try {
   const colored = await page.locator('.cal-day').evaluateAll((els) =>
     els.filter((el) => el.getAttribute('style')?.includes('hsl')).length
   );
-  ok(`días pasados coloreados (${colored})`, colored >= 1);
+  ok(`ningún día pasado coloreado (rutina arranca hoy) (${colored})`, colored === 0);
   await page.locator('.cal-day--today').click();
   await page.waitForSelector('.card__head h2');
-  ok('detalle del día abierto', (await page.locator('.card__head h2').count()) >= 1);
+  ok('detalle de hoy editable', (await page.locator('.card__head h2').count()) >= 1);
+  await page.locator('.cal-day').first().click();
+  await page.waitForSelector('.day-summary');
+  ok('resumen de día pasado (qué hice / qué no)', (await page.locator('.day-summary').count()) === 1);
 
   console.log('\n[8] Ajustes y respaldo');
   await page.click('a[href="#ajustes"]');
@@ -176,6 +208,16 @@ try {
   await page.click('[data-aj="sync"]');
   await page.waitForTimeout(1500);
   ok('estado de sync en línea', (await page.locator('.sync-online').count()) === 1);
+
+  console.log('\n[9] Estadísticas');
+  await page.click('a[href="#stats"]');
+  await page.waitForSelector('.kpi-row');
+  ok('KPIs visibles', (await page.locator('.kpi').count()) >= 4);
+  const canvases = await page.locator('.chart-box canvas').count();
+  ok(`gráficos Chart.js (${canvases})`, canvases === 5);
+  const hmCells = await page.locator('.hm-cell').count();
+  ok(`mapa de actividad de 14 semanas (${hmCells} celdas)`, hmCells === 98);
+  ok('5 pestañas en la nav', (await page.locator('.nav__item').count()) === 5);
 } finally {
   await browser.close();
   await killServer();

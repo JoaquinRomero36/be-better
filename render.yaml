@@ -1,0 +1,11 @@
+# Render Blueprint — deploy automático desde el repo (https://render.com/docs/blueprint-spec)
+services:
+  - type: web
+    name: be-better
+    runtime: node
+    repo: https://github.com/JoaquinRomero36/be-better
+    branch: main
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    autoDeploy: true

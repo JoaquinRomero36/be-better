@@ -17,6 +17,20 @@ export function doneCount(tasks: Task[]): number {
   return tasks.filter((t) => t.estado === 'COMPLETA').length;
 }
 
+/**
+ * Estado que corresponde al avance del contador de una tarea con cantidad:
+ * <50% No hice · ≥50% A medias · >75% Casi completa · ≥100% Completa.
+ * Devuelve null si la tarea no tiene cantidad (el estado se maneja a mano).
+ */
+export function estadoParaProgreso(hecho: number | undefined, cantidad: number | undefined): Estado | null {
+  if (!(typeof cantidad === 'number' && cantidad > 0)) return null;
+  const p = (hecho ?? 0) / cantidad;
+  if (p >= 1) return 'COMPLETA';
+  if (p > 0.75) return 'CASI_COMPLETA';
+  if (p >= 0.5) return 'A_MEDIAS';
+  return 'NO_HICE';
+}
+
 /** Color de un día según su nivel de cumplimiento (rojo -> verde). */
 export function scoreColor(score: number): string {
   const h = Math.round(score * 120);

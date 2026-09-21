@@ -5,17 +5,19 @@ import { renderOnboarding } from './ui/onboarding';
 import { renderDia } from './ui/dia';
 import { renderSemana } from './ui/semana';
 import { renderAlmanaque } from './ui/almanaque';
+import { renderStats } from './ui/stats';
 import { renderAjustes } from './ui/ajustes';
 
 registerSW({ immediate: true });
 
 const app = document.getElementById('app')!;
 
-type Route = 'dia' | 'semana' | 'almanaque' | 'ajustes';
+type Route = 'dia' | 'semana' | 'stats' | 'almanaque' | 'ajustes';
 
 const NAV: { route: Route; label: string }[] = [
   { route: 'dia', label: 'Día' },
   { route: 'semana', label: 'Semana' },
+  { route: 'stats', label: 'Stats' },
   { route: 'almanaque', label: 'Almanaque' },
   { route: 'ajustes', label: 'Ajustes' }
 ];
@@ -47,19 +49,15 @@ function routeHandler(): void {
   const route = currentRoute();
   if (route === 'dia') renderDia(content);
   else if (route === 'semana') renderSemana(content);
+  else if (route === 'stats') renderStats(content);
   else if (route === 'almanaque') renderAlmanaque(content);
   else renderAjustes(content);
 }
 
-// Re-render de la ruta actual ante cualquier cambio de estado o de minuto.
+// Re-render de la ruta actual ante cualquier cambio de estado.
 subscribe(() => routeHandler());
 
 window.addEventListener('hashchange', routeHandler);
-
-// Re-render cada minuto en «Mi día» (cambia el «ahora mismo»).
-window.setInterval(() => {
-  if (currentRoute() === 'dia') routeHandler();
-}, 60_000);
 
 startAutoSync();
 routeHandler();

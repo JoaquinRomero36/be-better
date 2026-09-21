@@ -64,38 +64,18 @@ p { margin: 0 0 10px; }
 .progress-fill { background: linear-gradient(90deg, #22c55e, #84cc16); height: 100%; transition: width 0.3s ease; }
 .progress-score { display: block; margin-top: 8px; color: var(--text-dim); font-size: 0.85rem; }
 
-/* Tarjeta "ahora" */
-.now-card { border: 1px solid var(--surface-2); }
-.now-card--done { border-color: transparent; }
-.now-card__tag {
+/* Día completado */
+.day-done { border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); text-align: center; }
+.day-done__tag {
+  display: inline-block;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--accent);
   font-weight: 600;
+  margin-bottom: 4px;
 }
-.now-card__body { display: flex; align-items: center; gap: 14px; margin: 10px 0; }
-.now-card__time {
-  font-size: 2rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent);
-  min-width: 84px;
-}
-.now-card__name { font-size: 1.1rem; font-weight: 600; }
-.now-card__meta { color: var(--text-dim); font-size: 0.9rem; }
-.check-giant {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  background: var(--surface-2);
-  border-radius: 12px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.check-giant input { width: 20px; height: 20px; accent-color: var(--accent); }
+.day-done p { color: var(--text-dim); font-size: 0.9rem; }
 
 /* Lista de tareas */
 .tasks__list { list-style: none; margin: 0; padding: 0; }
@@ -108,8 +88,6 @@ p { margin: 0 0 10px; }
 }
 .task:last-child { border-bottom: none; }
 .task--done .task__name { text-decoration: line-through; opacity: 0.6; }
-.task--current { background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 10px; }
-.task--overdue .task__time { color: var(--danger); font-weight: 600; }
 .task__cycle {
   border: none;
   background: none;
@@ -130,16 +108,7 @@ p { margin: 0 0 10px; }
 }
 .task__body { flex: 1; min-width: 0; }
 .task__name { font-weight: 600; display: block; }
-.task__time { color: var(--text-dim); font-size: 0.82rem; }
-.task__desc { color: var(--text-dim); }
-.qty {
-  background: var(--surface-2);
-  border-radius: 6px;
-  padding: 1px 6px;
-  font-size: 0.75rem;
-  margin-left: 6px;
-  color: var(--accent);
-}
+.task__desc { color: var(--text-dim); font-size: 0.82rem; }
 .task__actions { display: flex; gap: 4px; flex: none; }
 .icon-btn {
   border: none;
@@ -152,12 +121,20 @@ p { margin: 0 0 10px; }
   font-size: 0.85rem;
 }
 .icon-btn--danger { color: var(--danger); }
+.icon-btn--sm { width: 28px; height: 28px; font-size: 1.05rem; line-height: 1; }
+
+/* Contador de unidades (tarea con cantidad) */
+.task__count { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.task__count-mid { flex: 1; min-width: 0; }
+.task__count-num { font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-dim); }
+.count-track { background: var(--surface-2); border-radius: 999px; height: 6px; overflow: hidden; margin-top: 3px; }
+.count-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s ease; }
 
 /* Formulario de tarea */
 .task-form { margin: 12px 0; padding-top: 12px; border-top: 1px solid var(--surface-2); }
 .field { margin-bottom: 10px; }
 .field label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 4px; }
-.field-row { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 10px; }
+.field-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
 .task-form input {
   width: 100%;
   background: var(--bg);
@@ -212,22 +189,49 @@ p { margin: 0 0 10px; }
 .routine-row__fields { display: flex; align-items: center; gap: 10px; color: var(--text-dim); flex-wrap: wrap; }
 .routine-row__fields input[type='number'] { width: 52px; text-align: center; }
 
-/* Semana */
-.week-list { list-style: none; margin: 0; padding: 0; }
-.week-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--surface-2);
+/* Semana — grilla de progresión por día */
+.wk-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(84px, 1fr));
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
-.week-item:last-child { border-bottom: none; }
-.week-item__dot { width: 14px; height: 14px; border-radius: 4px; flex: none; }
-.week-item__date { width: 108px; text-transform: capitalize; font-size: 0.92rem; }
-.week-item__bar { flex: 1; background: var(--surface-2); border-radius: 999px; height: 8px; overflow: hidden; }
-.week-item__bar i { display: block; background: var(--accent); height: 100%; }
-.week-item__score { width: 52px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-.week-item__count { color: var(--text-dim); font-size: 0.82rem; width: 44px; text-align: right; }
+.wk-grid::-webkit-scrollbar { display: none; }
+.wk-col {
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid transparent;
+}
+.wk-col--today { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface-2)); }
+.wk-col__head { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
+.wk-col__day { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); font-weight: 700; }
+.wk-col__date { font-size: 0.95rem; }
+.wk-col--today .wk-col__day, .wk-col--today .wk-col__date { color: var(--accent); }
+.wk-col__bar { background: var(--surface); border-radius: 999px; height: 6px; overflow: hidden; }
+.wk-col__bar i { display: block; height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+.wk-col__pct { font-size: 0.68rem; color: var(--text-dim); font-weight: 600; }
+.wk-col__count { font-size: 0.66rem; color: var(--text-dim); }
+.wk-col__list { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.wk-item {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 3px 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wk-item--done { opacity: 0.45; text-decoration: line-through; }
+.wk-item--empty { background: none; color: var(--text-dim); text-align: center; }
+.wk-item__dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin-right: 4px; }
+.wk-item__cnt { color: var(--text-dim); font-size: 0.64rem; font-weight: 700; }
 .reg-list { list-style: none; margin: 0; padding: 0; }
 .reg-list li {
   display: flex;
@@ -239,6 +243,7 @@ p { margin: 0 0 10px; }
 .reg-list li:last-child { border-bottom: none; }
 .reg-list__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .reg-list strong { color: var(--accent); }
+.reg-list__right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: none; }
 
 /* Almanaque */
 .cal-head { display: flex; align-items: center; justify-content: space-between; }
@@ -264,6 +269,7 @@ p { margin: 0 0 10px; }
   aspect-ratio: 1;
   border-radius: 10px;
   border: none;
+  background: var(--surface-2);
   color: #fff;
   font-weight: 700;
   font-size: 0.95rem;
@@ -278,6 +284,112 @@ p { margin: 0 0 10px; }
 .cal-day i { font-size: 0.62rem; font-style: normal; font-weight: 600; opacity: 0.9; }
 .cal-day--today { box-shadow: 0 0 0 2px var(--text); }
 .cal-day--sel { box-shadow: 0 0 0 2px var(--accent); }
+
+/* Resumen de un día tocado en el almanaque (pasado/futuro) */
+.day-summary__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.day-summary__head h2 { margin: 0; font-size: 1.05rem; text-transform: capitalize; }
+.day-summary__score { color: var(--text-dim); font-size: 0.85rem; white-space: nowrap; }
+.day-summary__list { list-style: none; margin: 0; padding: 0; }
+.day-summary__item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--surface-2); }
+.day-summary__item:last-child { border-bottom: none; }
+.day-summary__mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+}
+.day-summary__name { min-width: 0; }
+.day-summary__desc { color: var(--text-dim); font-size: 0.82rem; }
+.day-summary__count { margin-left: auto; flex: none; color: var(--text-dim); font-size: 0.75rem; font-weight: 600; }
+
+/* Estadísticas (dashboard) */
+.kpi-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.kpi {
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 7px 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.kpi__lbl { color: var(--text-dim); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.kpi__val { font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.kpi__unit { font-size: 0.7rem; color: var(--text-dim); font-weight: 600; }
+/* Gráficos (Chart.js) */
+.chart-box { position: relative; height: 250px; margin-top: 6px; }
+.chart-box--sm { height: 220px; }
+.chart-box canvas { width: 100% !important; height: 100% !important; }
+
+/* Heatmap de actividad */
+.hm-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.hm-scroll::-webkit-scrollbar { display: none; }
+.hm { min-width: 560px; }
+.hm-cols {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 4px;
+  padding-left: 22px;
+}
+.hm-month { font-size: 0.6rem; color: var(--text-dim); text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-row { display: flex; align-items: center; gap: 3px; margin-bottom: 3px; }
+.hm-row__lbl { width: 18px; font-size: 0.58rem; color: var(--text-dim); text-align: right; flex: none; }
+.hm-row__cells { display: grid; grid-template-columns: repeat(14, 1fr); gap: 3px; flex: 1; }
+.hm-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: var(--surface-2);
+}
+.hm-cell--zero { background: hsl(120 20% 22%); }
+.hm-cell--future { background: var(--surface); }
+.hm-cell--today { outline: 1.5px solid var(--text); outline-offset: 1px; }
+.hm-legend { display: flex; align-items: center; gap: 3px; margin-top: 8px; font-size: 0.65rem; color: var(--text-dim); }
+.hm-legend__sw { width: 10px; height: 10px; border-radius: 2px; }
+
+/* Estadísticas — cuadrícula por importancia
+   mobile: una columna (todo a ancho completo para leer los gráficos)
+   ≥1280px: 6 columnas, cada par (línea/mapa, hist/dispersión, completadas/estados) a media anchura */
+.stats { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+.stats .page-head { grid-column: 1 / -1; margin: 0; }
+.stats .page-head h1 { font-size: 1.15rem; }
+.stats .stats-head { display: flex; align-items: center; gap: 8px; }
+.stats .stats-head__title { flex: 1; min-width: 0; }
+.stats .stats-head .date-line { margin: 0; }
+.stats .stats-head .icon-btn:disabled { opacity: 0.35; cursor: default; }
+.stats .card { padding: 12px; margin-bottom: 0; }
+.stats .card h3 { font-size: 0.8rem; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); }
+.stats .kpi-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 2px; }
+.stats .kpi {
+  gap: 3px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-2) 78%, var(--accent) 14%) 0%, var(--surface-2) 70%);
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  flex-direction: column;
+  align-items: flex-start;
+}
+.stats .kpi__lbl { font-size: 0.58rem; letter-spacing: 0.07em; }
+.stats .kpi__nums { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+.stats .kpi__val { font-size: 1.3rem; line-height: 1.15; color: var(--accent); }
+.stats .kpi__unit { font-size: 0.65rem; }
+.stats .chart-box { height: 180px; margin-top: 4px; }
+.stats .chart-box--sm { height: 170px; }
+.stats .hm { min-width: 540px; max-width: 560px; }
+.stats .hm-cols { gap: 2px; margin-bottom: 3px; padding-left: 20px; }
+.stats .hm-month { font-size: 0.56rem; }
+.stats .hm-row { gap: 2px; margin-bottom: 2px; }
+.stats .hm-row__lbl { font-size: 0.54rem; }
+.stats .hm-row__cells { gap: 2px; }
+.stats .hm-cell { border-radius: 2px; }
+.stats .hm-legend { gap: 3px; margin-top: 6px; font-size: 0.6rem; }
+.stats .hm-legend__sw { width: 9px; height: 9px; border-radius: 2px; }
 
 /* Ajustes */
 .setting-list { list-style: none; margin: 0 0 12px; padding: 0; }
@@ -319,6 +431,75 @@ p { margin: 0 0 10px; }
 
 .empty-state { text-align: center; }
 
-@media (min-width: 640px) {
-  .nav { max-width: 640px; left: 50%; transform: translateX(-50%); border-radius: 14px 14px 0 0; }
+@media (min-width: 768px) {
+  .nav { max-width: 760px; left: 50%; transform: translateX(-50%); border-radius: 14px 14px 0 0; }
+}
+
+/* Pantallas grandes (notebook/desktop): aprovechar el ancho */
+@media (min-width: 1280px) {
+  html { font-size: 17px; }
+
+  .content {
+    max-width: 1200px;
+    padding: 28px 40px calc(104px + var(--safe-bottom));
+  }
+
+  .card { padding: 22px; margin-bottom: 18px; }
+  .page-head { margin-bottom: 20px; }
+  h1 { font-size: 1.8rem; }
+
+  .nav {
+    max-width: 1200px;
+    border-radius: 16px 16px 0 0;
+  }
+  .nav__item { padding: 14px 8px; font-size: 0.95rem; }
+
+  .task { padding: 14px 6px; }
+  .task__name { font-size: 1.05rem; }
+  .cycle-dot { width: 24px; height: 24px; }
+  .icon-btn { width: 36px; height: 36px; font-size: 1rem; }
+
+  .progress-track { height: 14px; }
+  .progress-card__top { font-size: 1.05rem; }
+
+  /* Semana: columnas amplias y cómodas */
+  .wk-grid { gap: 10px; }
+  .wk-col { padding: 12px 10px; }
+  .wk-item { font-size: 0.84rem; padding: 4px 7px; }
+  .wk-col__pct { font-size: 0.78rem; }
+
+  /* Heatmap: celdas más grandes */
+  .hm-row__cells { gap: 4px; }
+  .hm-cell { border-radius: 4px; }
+
+  /* Almanaque: días grandes */
+  .cal-day { font-size: 1.1rem; border-radius: 12px; }
+  .cal-day i { font-size: 0.72rem; }
+  .cal-weekdays { font-size: 0.85rem; }
+
+  .routine-row { padding: 16px; }
+  .task-form input { padding: 12px 14px; font-size: 1.05rem; }
+
+  /* Dashboard amplio */
+  .chart-box { height: 300px; }
+  .chart-box--sm { height: 260px; }
+  .kpi-row { gap: 12px; }
+  .kpi { padding: 8px 14px; }
+
+  /* Estadísticas — compacto (override del dashboard amplio): 6 columnas,
+   cada par (línea/mapa, hist/dispersión, completadas/estados) a media anchura */
+  .stats { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+  .stats [data-card='kpis'] { grid-column: 1 / -1; }
+  .stats [data-card='line'], .stats [data-card='heatmap'],
+  .stats [data-card='hist'], .stats [data-card='scatter'],
+  .stats [data-card='bars'], .stats [data-card='doughnut'] { grid-column: span 3; }
+  .stats .page-head { margin-bottom: 0; }
+  .stats .page-head h1 { font-size: 1.35rem; }
+  .stats .card { padding: 14px; margin-bottom: 0; }
+  .stats .chart-box { height: 230px; }
+  .stats .chart-box--sm { height: 210px; }
+  .stats .kpi { padding: 11px 13px; }
+  .stats .kpi__val { font-size: 1.5rem; }
+  .stats .kpi-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .stats .hm-scroll { display: flex; justify-content: center; }
 }

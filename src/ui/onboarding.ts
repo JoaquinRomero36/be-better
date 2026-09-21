@@ -2,12 +2,10 @@ import { newId } from '../lib/ids';
 import { daysInMonth, pad } from '../lib/time';
 import { hasRoutine, mutate } from '../store';
 import type { Task } from '../types';
-import { clamp, esc, num } from './common';
+import { esc, num } from './common';
 
 export interface OnbRow {
   nombre: string;
-  hora: string;
-  minuto: string;
   cantidad: string;
   descripcion: string;
 }
@@ -18,25 +16,19 @@ export function routineRowHTML(index: number, r: OnbRow): string {
       <div class="routine-row__main">
         <input class="routine-row__nombre" data-rf="nombre" placeholder="Tarea del día perfecto" required value="${esc(r.nombre)}" />
         <div class="routine-row__fields">
-          <span>a las
-            <input data-rf="hora" type="number" min="0" max="23" inputmode="numeric" value="${Number(r.hora)}" size="2" /> :
-            <input data-rf="minuto" type="number" min="0" max="59" inputmode="numeric" value="${Number(r.minuto)}" size="2" />
-          </span>
-          <label>×<input data-rf="cantidad" type="number" min="1" inputmode="numeric" placeholder="—" value="${esc(r.cantidad)}" size="3" /></label>
+          <label>×<input data-rf="cantidad" type="number" min="1" inputmode="numeric" placeholder="cantidad opc." value="${esc(r.cantidad)}" size="6" /></label>
+          <input data-rf="descripcion" placeholder="descripción (opc.)" value="${esc(r.descripcion)}" />
         </div>
-        <input data-rf="descripcion" placeholder="descripción (opc.)" value="${esc(r.descripcion)}" />
       </div>
       <button class="icon-btn icon-btn--danger" data-routine-del type="button" aria-label="Quitar tarea">✕</button>
     </div>`;
 }
 
-export function routineState(r: OnbRow): Pick<Task, 'nombre' | 'descripcion' | 'cantidad' | 'hora' | 'minuto'> {
+export function routineState(r: OnbRow): Pick<Task, 'nombre' | 'descripcion' | 'cantidad'> {
   return {
     nombre: r.nombre.trim() || 'Tarea',
     descripcion: r.descripcion.trim(),
-    cantidad: r.cantidad.trim() ? num(r.cantidad, 1) : undefined,
-    hora: clamp(num(r.hora, 9), 0, 23),
-    minuto: clamp(num(r.minuto, 0), 0, 59)
+    cantidad: r.cantidad.trim() ? num(r.cantidad, 1) : undefined
   };
 }
 
@@ -50,27 +42,25 @@ export function buildRoutineRows(rows: OnbRow[]): Task[] {
 
 export function renderOnboarding(c: HTMLElement): void {
   if (hasRoutine()) return;
-  let rows: OnbRow[] = [
-    { nombre: '', hora: '09', minuto: '00', cantidad: '', descripcion: '' }
-  ];
+  let rows: OnbRow[] = [{ nombre: '', cantidad: '', descripcion: '' }];
 
   const draw = () => {
     c.innerHTML = `
       <div class="onboarding">
         <h1>Armemos tu día perfecto</h1>
-        <p class="hint">Contame qué tareas componen un día ideal (nombre y horario). Este plan se copiará a todos los días del mes actual y después lo ajustás a mano.</p>
+        <p class="hint">Contame qué tareas componen un día ideal. Este plan se copiará a los días de hoy hasta fin de mes y después lo ajustás a mano.</p>
         <form data-onb>
           <div data-onb-rows>
             ${rows.map((r, i) => routineRowHTML(i, r)).join('')}
           </div>
           <button class="btn btn--ghost" data-onb-add type="button">+ Agregar otra tarea</button>
-          <p class="hint">Terminá con <strong>Crear mi rutina</strong>.<br />Tip: tocá el círculo de cada tarea en tu día para avanzar su estado: No hice → A medias → Casi completa → Completa.</p>
+          <p class="hint">Terminá con <strong>Crear mi rutina</strong>.<br />Tip: tocá el círculo de cada tarea para avanzar su estado: No hice → A medias → Casi completa → Completa.</p>
           <button class="btn btn--primary btn--block" type="submit">Crear mi rutina</button>
         </form>
       </div>`;
 
     c.querySelector('[data-onb-add]')?.addEventListener('click', () => {
-      rows = [...rows, { nombre: '', hora: '09', minuto: '00', cantidad: '', descripcion: '' }];
+      rows = [...rows, { nombre: '', cantidad: '', descripcion: '' }];
       draw();
     });
 
@@ -103,8 +93,11 @@ export function renderOnboarding(c: HTMLElement): void {
       const routine = buildRoutineRows(valid);
       const year = new Date().getFullYear();
       const month = new Date().getMonth();
+      const startDay = new Date().getDate();
       mutate((s) => {
-        for (let d = 1; d <= daysInMonth(year, month); d++) {
+        // La rutina arranca desde hoy (no desde el 1ro): los días previos
+        // quedan sin datos y no cuentan en las estadísticas.
+        for (let d = startDay; d <= daysInMonth(year, month); d++) {
           const key = `${year}-${pad(month + 1)}-${pad(d)}`;
           s.days[key] = routine.map((t) => ({ ...t, id: newId() }));
         }

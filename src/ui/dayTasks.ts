@@ -1,20 +1,19 @@
 import { newId } from '../lib/ids';
-import { fmtDate, nowMinutes, todayKey } from '../lib/time';
+import { estadoParaProgreso } from '../lib/scoring';
+import { fmtDate } from '../lib/time';
 import { mutate, getStateObj } from '../store';
 import type { Task } from '../types';
 import { ESTADOS } from '../types';
-import { clamp, esc, num } from './common';
+import { esc, num } from './common';
 import { taskList } from './components';
 
 interface Draft {
   nombre: string;
-  hora: string;
-  minuto: string;
   cantidad: string;
   descripcion: string;
 }
 
-const emptyDraft: Draft = { nombre: '', hora: '09', minuto: '00', cantidad: '', descripcion: '' };
+const emptyDraft: Draft = { nombre: '', cantidad: '', descripcion: '' };
 
 let addOpen = false;
 let editingId: number | null = null;
@@ -32,8 +31,7 @@ function taskFromDraft(existing?: Task): Task {
     nombre: d.nombre.trim() || 'Tarea',
     descripcion: d.descripcion.trim(),
     cantidad: d.cantidad.trim() ? Math.max(1, num(d.cantidad, 1)) : undefined,
-    hora: clamp(num(d.hora, 9), 0, 23),
-    minuto: clamp(num(d.minuto, 0), 0, 59),
+    hecho: existing?.hecho ?? undefined,
     estado: existing?.estado ?? 'NO_HICE'
   };
 }
@@ -48,21 +46,13 @@ function formHtml(isEdit: boolean): string {
       </div>
       <div class="field-row">
         <div class="field">
-          <label for="f-hora">Hora</label>
-          <input id="f-hora" data-field="hora" type="number" min="0" max="23" inputmode="numeric" value="${Number(d.hora)}" />
-        </div>
-        <div class="field">
-          <label for="f-minuto">Minuto</label>
-          <input id="f-minuto" data-field="minuto" type="number" min="0" max="59" inputmode="numeric" value="${Number(d.minuto)}" />
-        </div>
-        <div class="field">
           <label for="f-cantidad">Cantidad (opc.)</label>
-          <input id="f-cantidad" data-field="cantidad" type="number" min="1" inputmode="numeric" placeholder="—" value="${esc(d.cantidad)}" />
+          <input id="f-cantidad" data-field="cantidad" type="number" min="1" inputmode="numeric" placeholder="Ej: 100 flexiones" value="${esc(d.cantidad)}" />
         </div>
-      </div>
-      <div class="field">
-        <label for="f-desc">Descripción (opc.)</label>
-        <input id="f-desc" data-field="descripcion" placeholder="Detalle…" value="${esc(d.descripcion)}" />
+        <div class="field">
+          <label for="f-desc">Descripción (opc.)</label>
+          <input id="f-desc" data-field="descripcion" placeholder="Detalle…" value="${esc(d.descripcion)}" />
+        </div>
       </div>
       <div class="form-actions">
         <button class="btn btn--primary" type="submit">${isEdit ? 'Guardar' : 'Agregar'}</button>
@@ -87,7 +77,7 @@ export function renderDayTasks(c: HTMLElement, day: string): void {
         <button class="btn btn--ghost" data-toggle-add>${addOpen ? 'Cerrar' : '+ Agregar tarea'}</button>
       </div>
       ${addOpen ? formHtml(isEdit) : ''}
-      <div data-task-list>${taskList(getDayTasks(day), day === todayKey() ? nowMinutes() : undefined)}</div>
+      <div data-task-list>${taskList(getDayTasks(day))}</div>
     </div>`;
 
   c.querySelector('[data-toggle-add]')?.addEventListener('click', () => {
@@ -148,16 +138,28 @@ export function renderDayTasks(c: HTMLElement, day: string): void {
         const list = s.days[d];
         const t = list?.find((x) => x.id === task.id);
         if (!t) return;
+        const auto = estadoParaProgreso(t.hecho, t.cantidad);
+        if (auto) {
+          t.estado = auto;
+          return;
+        }
         const i = ESTADOS.indexOf(t.estado);
         t.estado = ESTADOS[(i + 1) % ESTADOS.length];
+      });
+    } else if (action === 'count' || action === 'uncount') {
+      mutate((s) => {
+        const t = s.days[d]?.find((x) => x.id === task.id);
+        if (!t) return;
+        const base = t.hecho ?? 0;
+        t.hecho = action === 'count' ? base + 1 : Math.max(0, base - 1);
+        const auto = estadoParaProgreso(t.hecho, t.cantidad);
+        if (auto) t.estado = auto;
       });
     } else if (action === 'edit') {
       editingId = task.id;
       addOpen = true;
       draft = {
         nombre: task.nombre,
-        hora: String(task.hora),
-        minuto: String(task.minuto),
         cantidad: task.cantidad ? String(task.cantidad) : '',
         descripcion: task.descripcion
       };

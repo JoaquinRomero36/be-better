@@ -16,10 +16,6 @@ export function esc(value: unknown): string {
   });
 }
 
-export function clamp(n: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, n));
-}
-
 export function num(value: string, fallback: number): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;

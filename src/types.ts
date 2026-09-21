@@ -6,8 +6,7 @@ export interface Task {
   nombre: string;
   descripcion: string;
   cantidad?: number;
-  hora: number;
-  minuto: number;
+  hecho?: number;
   estado: Estado;
   templateId?: number;
 }

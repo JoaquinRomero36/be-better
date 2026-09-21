@@ -1,6 +1,9 @@
-import { dayScore, scoreColor } from '../lib/scoring';
-import { firstWeekOffset, isPast, isToday, monthKeys, monthLabel, todayParts } from '../lib/time';
+import { dayScore, scoreColor, scoreLabel } from '../lib/scoring';
+import { firstWeekOffset, fmtDate, isPast, isToday, monthKeys, monthLabel, todayParts } from '../lib/time';
 import { getStateObj } from '../store';
+import { ESTADO_INFO } from '../types';
+import type { Task } from '../types';
+import { esc } from './common';
 import { renderDayTasks } from './dayTasks';
 
 let view = todayParts();
@@ -41,7 +44,7 @@ export function renderAlmanaque(c: HTMLElement): void {
       <div class="cal-fill" style="--offset:${offset}">
         ${cells}
       </div>
-      <p class="hint">Los días pasados se colorean según cuánto cumpliste. Tocá un día para verlo o editarlo.</p>
+      <p class="hint">Los días pasados se colorean según cuánto cumpliste. Tocá un día para ver qué hiciste.</p>
     </section>
 
     <div data-detail></div>
@@ -63,6 +66,40 @@ export function renderAlmanaque(c: HTMLElement): void {
 
   const detail = c.querySelector<HTMLElement>('[data-detail]');
   if (selected && detail) {
-    renderDayTasks(detail, selected);
+    if (isToday(selected)) {
+      renderDayTasks(detail, selected);
+    } else {
+      renderDaySummary(detail, selected);
+    }
   }
+}
+
+function renderDaySummary(el: HTMLElement, key: string): void {
+  const tasks = getStateObj().days[key] ?? [];
+  const score = dayScore(tasks);
+  el.innerHTML = `
+    <section class="card day-summary">
+      <header class="day-summary__head">
+        <h2>${fmtDate(key)}</h2>
+        <span class="day-summary__score">${score === null ? 'Sin datos' : `${scoreLabel(score)} de ${tasks.length} tareas`}</span>
+      </header>
+      ${
+        tasks.length
+          ? `<ul class="day-summary__list">
+        ${tasks.map((t) => summaryItem(t)).join('')}
+      </ul>`
+          : '<p class="empty">No hubo plan en este día.</p>'
+      }
+    </section>`;
+}
+
+function summaryItem(t: Task): string {
+  const info = ESTADO_INFO[t.estado];
+  const count = t.cantidad ? `${t.hecho ?? 0} / ${t.cantidad} · ` : '';
+  return `
+    <li class="day-summary__item${t.estado === 'COMPLETA' ? ' day-summary__item--done' : ''}">
+      <span class="day-summary__mark" style="--c:${info.color}">${t.estado === 'COMPLETA' ? '✓' : '✕'}</span>
+      <span class="day-summary__name">${esc(t.nombre)}${t.descripcion ? ` <span class="day-summary__desc">· ${esc(t.descripcion)}</span>` : ''}</span>
+      <span class="day-summary__count">${count}${info.label}</span>
+    </li>`;
 }
