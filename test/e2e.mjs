@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -205,6 +206,17 @@ try {
     page.click('[data-aj="export"]')
   ]);
   ok(`descarga de respaldo (${dl[0].suggestedFilename()})`, dl[0].suggestedFilename().startsWith('be-better-'));
+  const backupFile = join(tmpdir(), `be-better-e2e-${Date.now()}.json`);
+  await dl[0].saveAs(backupFile);
+  await page.evaluate(() => {
+    window.confirm = () => true;
+    window.alert = () => {};
+  });
+  await page.locator('[data-aj="import-file"]').setInputFiles(backupFile);
+  await page.waitForSelector('.card__head', { timeout: 5000 });
+  ok('import de respaldo (vuelve a Mi día)', (await page.locator('.card__head h2').count()) >= 1);
+  await page.click('a[href="#ajustes"]');
+  await page.waitForSelector('[data-aj="sync"]');
   await page.click('[data-aj="sync"]');
   await page.waitForTimeout(1500);
   ok('estado de sync en línea', (await page.locator('.sync-online').count()) === 1);

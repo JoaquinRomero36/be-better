@@ -73,7 +73,7 @@ export function renderAjustes(c: HTMLElement): void {
     if (!file) return;
     void (async () => {
       try {
-        const parsed = (await file.text()) as unknown;
+        const parsed = JSON.parse(await file.text()) as unknown;
         const state = parsed as AppState;
         if (typeof state !== 'object' || state === null || typeof state.days !== 'object' || Array.isArray(state.days)) {
           throw new Error('Formato inválido');
