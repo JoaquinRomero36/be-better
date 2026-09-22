@@ -170,7 +170,38 @@ try {
   await page.waitForTimeout(200);
   ok('tarea borrada', !(await page.locator('.task__name').allTextContents()).includes('Ejercicio mañana'));
 
-  console.log('\n[6] Semana');
+  console.log('\n[6] Copiar rutina al mes sin duplicar');
+  const maxMeditar = async () => {
+    await page.waitForTimeout(1600); // espera el push al server
+    const stR = await fetchState();
+    let max = 0;
+    for (const key of Object.keys(stR.days)) {
+      const n = stR.days[key].filter((t) => t.nombre === 'Meditar').length;
+      if (n > max) max = n;
+    }
+    return max;
+  };
+  await page.click('a[href="#ajustes"]');
+  await page.waitForSelector('[data-aj="apply-month"]');
+  await page.click('[data-aj="apply-month"]');
+  await page.waitForTimeout(300);
+  ok('primer copiado: sin duplicados', (await maxMeditar()) <= 1);
+  // Reproduce el bug: borrar Meditar de hoy y re-agregarlo a mano (queda sin templateId).
+  await page.click('a[href="#dia"]');
+  await page.waitForSelector('[data-toggle-add]');
+  await page.locator('.task').filter({ hasText: 'Meditar' }).locator('[data-action="del"]').click();
+  await page.waitForTimeout(200);
+  await page.click('[data-toggle-add]');
+  await page.fill('[data-field="nombre"]', 'Meditar');
+  await page.click('form[data-form="task"] button[type="submit"]');
+  await page.waitForTimeout(300);
+  await page.click('a[href="#ajustes"]');
+  await page.waitForSelector('[data-aj="apply-month"]');
+  await page.click('[data-aj="apply-month"]');
+  await page.waitForTimeout(300);
+  ok('re-aplicar tras re-agregar a mano: sin duplicados', (await maxMeditar()) <= 1);
+
+  console.log('\n[7] Semana');
   await page.click('a[href="#semana"]');
   await page.waitForSelector('.wk-col');
   const wkCols = await page.locator('.wk-col').count();
@@ -180,7 +211,7 @@ try {
   ok(`tareas por día (${wkItems})`, wkItems >= 2);
   ok('regularidad por tarea', (await page.locator('.reg-list li').count()) >= 2);
 
-  console.log('\n[7] Almanaque');
+  console.log('\n[8] Almanaque');
   await page.click('a[href="#almanaque"]');
   await page.waitForSelector('.cal-day');
   const calDays = await page.locator('.cal-day').count();
@@ -197,7 +228,7 @@ try {
   await page.waitForSelector('.day-summary');
   ok('resumen de día pasado (qué hice / qué no)', (await page.locator('.day-summary').count()) === 1);
 
-  console.log('\n[8] Ajustes y respaldo');
+  console.log('\n[9] Ajustes y respaldo');
   await page.click('a[href="#ajustes"]');
   await page.waitForSelector('[data-aj="sync"]'); // selector propio de Ajustes (evita race con el h1 previo)
   ok('panel de ajustes', (await page.locator('h1').textContent()) === 'Ajustes');
@@ -221,7 +252,7 @@ try {
   await page.waitForTimeout(1500);
   ok('estado de sync en línea', (await page.locator('.sync-online').count()) === 1);
 
-  console.log('\n[9] Estadísticas');
+  console.log('\n[10] Estadísticas');
   await page.click('a[href="#stats"]');
   await page.waitForSelector('.kpi-row');
   ok('KPIs visibles', (await page.locator('.kpi').count()) >= 4);

@@ -54,9 +54,10 @@ export function aplicaRutinaAMes(): void {
     window.alert('Primero agregá tareas al día de hoy.');
     return;
   }
+  const hoyNames = new Set(hoy.map((t) => t.nombre));
   const monthTemplates = new Set(hoy.map((t) => t.templateId).filter((x): x is number => typeof x === 'number'));
   const ok = window.confirm(
-    `¿Copiar las ${hoy.length} tareas de hoy al resto del mes actual? Se conservan tus tareas manuales y se respeta el estado ya marcado en cada día.`
+    `¿Copiar las ${hoy.length} tareas de hoy al resto del mes actual? Las tareas de tu rutina se reemplazan sin duplicarse y se conservan tus tareas manuales de cada día.`
   );
   if (!ok) return;
 
@@ -71,7 +72,15 @@ export function aplicaRutinaAMes(): void {
       const key = `${year}-${pad(month + 1)}-${pad(d)}`;
       if (key === todayKey()) continue;
       const exist = s.days[key] ?? [];
-      const keep = exist.filter((t) => !(t.templateId && monthTemplates.has(t.templateId)));
+      // Quitar las tareas que ya vienen de esta rutina (mismo templateId) y
+      // también las que coinciden por nombre con el día perfecto: si hoy la
+      // re-agregaste a mano (sin templateId) o la renombraste, la versión
+      // vieja de los otros días quedaría duplicada.
+      const keep = exist.filter((t) => {
+        if (typeof t.templateId === 'number' && monthTemplates.has(t.templateId)) return false;
+        if (hoyNames.has(t.nombre)) return false;
+        return true;
+      });
       const copies = hoy.map((t) => ({ ...t, id: newId(), estado: 'NO_HICE' as const, hecho: undefined }));
       s.days[key] = [...keep, ...copies];
     }
